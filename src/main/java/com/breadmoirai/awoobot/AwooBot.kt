@@ -4,6 +4,8 @@ import com.breadmoirai.awoobot.util.EventAwaiter
 import com.breadmoirai.awoobot.util.matching
 import com.breadmoirai.awoobot.util.matchingPrefix
 import com.breadmoirai.awoobot.util.parseIntSuffix
+import dev.minn.jda.ktx.interactions.commands.slash
+import dev.minn.jda.ktx.interactions.commands.updateCommands
 import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.events.GenericEvent
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
@@ -33,6 +35,9 @@ object AwooBot {
 
     fun createCommands() {
         println("Creating Commands")
+        jda.updateCommands {
+            slash("awoo", "Start a werewolf game")
+        }.queue()
         jda.getGuildById("1016620556252090408")!!.upsertCommand("ping", "pongs").queue()
         jda.getGuildById("1016620556252090408")!!.upsertCommand("awoo", "Start a werewolf game").queue()
         jda.getGuildById("1016620556252090408")!!.upsertCommand("awoot", "Start a werewolf game").queue()

@@ -14,12 +14,19 @@ open class Werewolf(val _id: String? = null) : Role() {
         "Wakes alongside other werewolves. *If alone, they can look at one card in the center."
     override val team: Team = Team.Werewolf
     override val nightOrder: Int? = 20
+    val subOrder: Int? = null
 
     override suspend fun nightAction(game: WerewolfGame, player: MemberPlayer) {
         val werewolves = game.players.filter { it.team == Team.Werewolf }
         val fellows = werewolves.filter { otherWerewolf -> otherWerewolf != player }
         if (fellows.isEmpty()) {
-
+            val (pressEvent, center) = game.targetCenter(
+                player,
+                "## Lone ${player.role}\nWhich center card would you like to see?",
+                id
+            )
+            pressEvent.reply("OK!, you saw $center ${center.card}").setEphemeral(true).queue()
+            game.nightHistory.add("${player.role} $player saw $center ${center.card}")
         }
         val fellowsDisplay = fellows.joinToOxford()
         player.hook.sendMessage(

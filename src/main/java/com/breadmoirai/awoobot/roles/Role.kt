@@ -54,6 +54,7 @@ abstract class Role {
             Doppleganger(),
             MysticWolf(),
             AlphaWolf(),
+            ParitySeer(),
             Rascal(),
             Witch(),
             Hunter(),

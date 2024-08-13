@@ -1,5 +1,7 @@
 package com.breadmoirai.awoobot
 
+import com.breadmoirai.awoobot.roles.AlphaWolf
+import com.breadmoirai.awoobot.roles.DreamWolf
 import com.breadmoirai.awoobot.roles.Role
 import dev.minn.jda.ktx.coroutines.await
 import dev.minn.jda.ktx.events.CoroutineEventListener
@@ -136,6 +138,7 @@ class WerewolfLobby(val name: String, val event: SlashCommandInteractionEvent) {
     private fun addGameStartListener(): CoroutineEventListener {
         return AwooBot.jda.listener<ButtonInteractionEvent> { event ->
             if (event.button.id != "$id-start-game") return@listener
+
             AwooBot.jda.removeEventListener(*listeners.toTypedArray())
             hook.editOriginalComponents().queue()
             event.deferEdit().queue()
@@ -143,7 +146,13 @@ class WerewolfLobby(val name: String, val event: SlashCommandInteractionEvent) {
             for (roleEditMsg in roleEditMsgs) {
                 roleEditMsg.delete().queue()
             }
-            WerewolfGame(id, thread, players, roleSet).runGame()
+            WerewolfGame(
+                id,
+                thread,
+                players,
+                roleSet,
+                if (roleSet.any { it is AlphaWolf }) DreamWolf() else null
+            ).runGame()
         }
     }
 
@@ -194,7 +203,7 @@ class WerewolfLobby(val name: String, val event: SlashCommandInteractionEvent) {
 
     suspend fun openFakeLobby() {
         val member = event.member!!
-        repeat(5) { n ->
+        repeat(7) { n ->
             val fakeName = "${member.effectiveName}#$n"
             players += fakeMember(member, fakeName)
         }

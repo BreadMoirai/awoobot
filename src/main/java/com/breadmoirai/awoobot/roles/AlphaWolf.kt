@@ -5,7 +5,7 @@ import com.breadmoirai.awoobot.WerewolfGame
 
 class AlphaWolf : Werewolf() {
     override val description: String = "Gives another player the center werewolf card"
-    override val nightOrder: Int = 24
+    override val nightOrder: Int = 22
 
     override suspend fun nightAction(game: WerewolfGame, player: MemberPlayer) {
         super.nightAction(game, player)
@@ -16,7 +16,7 @@ class AlphaWolf : Werewolf() {
             false
         )
         event.reply("You have given $target the center werewolf card").setEphemeral(true).queue()
-        game.nightHistory.add("${player.role} $player swapped ${game.center[4]}'s ${game.center[4].card} with ${target}'s ${target.card}")
-        game.swapCards(target, game.center[4])
+        game.nightHistory.add("${player.role} $player swapped ${game.center[3]}'s ${game.center[3].card} with ${target}'s ${target.card}")
+        game.swapCards(target, game.center[3])
     }
 }

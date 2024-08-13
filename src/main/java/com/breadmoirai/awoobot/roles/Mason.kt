@@ -15,7 +15,7 @@ open class Mason(val _id: String? = null) : Role() {
     override val nightOrder: Int? = 20
 
     override suspend fun nightAction(game: WerewolfGame, player: MemberPlayer) {
-        val masons = game.players.filter { it.role is Mason }
+        val masons = game.players.filter { it.role is Mason || it.role is Doppleganger && it.refCard is Mason }
         val fellow = masons.singleOrNull { otherMason -> otherMason != player }
         if (fellow == null) {
             player.hook.sendMessage(

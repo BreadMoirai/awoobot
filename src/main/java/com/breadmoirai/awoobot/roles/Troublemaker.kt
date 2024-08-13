@@ -21,12 +21,17 @@ class Troublemaker() : Role() {
             )
         val targets = mutableListOf<MemberPlayer>()
         targetPlayerFlow.collect { (event, target) ->
-            event.reply("You have selected $target").setEphemeral(true).queue()
             targets += target
+            if (targets.size == 1) {
+                event.reply("You have selected $target").setEphemeral(true).queue()
+            } else {
+                val (targetA, targetB) = targets
+                event.reply("You have swapped $targetA and $targetB").setEphemeral(true).queue()
+                game.swapCards(targetA, targetB)
+                game.nightHistory.add("${player.role} $player swapped $targetA and $targetB")
+            }
         }
 
-        val (targetA, targetB) = targets
-        game.swapCards(targetA, targetB)
-        game.nightHistory.add("${player.role} $player swapped $targetA and $targetB")
+
     }
 }

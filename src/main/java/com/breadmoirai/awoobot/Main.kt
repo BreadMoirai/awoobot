@@ -19,7 +19,8 @@ fun main(args: Array<String>) {
             Permission.MESSAGE_SEND_IN_THREADS,
             Permission.VIEW_CHANNEL,
             Permission.MESSAGE_MANAGE,
-            Permission.MANAGE_THREADS
+            Permission.MANAGE_THREADS,
+            Permission.VOICE_MUTE_OTHERS
         )
     )
     AwooBot.jda = jda

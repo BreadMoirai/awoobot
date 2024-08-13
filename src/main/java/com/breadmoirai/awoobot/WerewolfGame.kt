@@ -9,13 +9,13 @@ import com.breadmoirai.awoobot.util.parseIntSuffix
 import dev.minn.jda.ktx.coroutines.await
 import dev.minn.jda.ktx.interactions.components.button
 import dev.minn.jda.ktx.messages.MessageCreate
-import dev.minn.jda.ktx.messages.invoke
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import net.dv8tion.jda.api.entities.Member
 import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
+import net.dv8tion.jda.api.exceptions.ErrorResponseException
 import net.dv8tion.jda.api.interactions.components.ItemComponent
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle
 import net.dv8tion.jda.api.utils.TimeFormat
@@ -28,14 +28,21 @@ class WerewolfGame(
     val id: String,
     val thread: ThreadChannel,
     playerSet: Set<Member>,
-    roleSet: Set<Role>
+    roleSet: Set<Role>,
+    centerWerewolf: Role? = null
 ) {
     val players: List<MemberPlayer> = run {
         val roleStack = roleSet.toMutableList().shuffled()
         playerSet.toList().shuffled().mapIndexed { num, member -> MemberPlayer(member, num + 1, roleStack[num]) }
     }
-    val center: List<CenterPlayer> = roleSet.minus(players.map(MemberPlayer::role).toSet()).toList().shuffled()
-        .mapIndexed { pos, r -> CenterPlayer(pos, r) }
+    val center: List<CenterPlayer> = run {
+        val rolesInPlay = players.map(MemberPlayer::role).toSet()
+        val centerRoles = roleSet.minus(rolesInPlay).toMutableList().shuffled().toMutableList()
+        if (centerWerewolf != null) {
+            centerRoles.add(centerWerewolf)
+        }
+        centerRoles.mapIndexed { pos, r -> CenterPlayer(pos + 1, r) }
+    }
     val wakeupQueue: PriorityQueue<MemberPlayer> = PriorityQueue(Comparator.comparingInt { p -> p.nightOrder!! })
     val votes: MutableMap<MemberPlayer, MemberPlayer> = mutableMapOf()
     val nightHistory: MutableList<String> = mutableListOf()
@@ -79,7 +86,6 @@ class WerewolfGame(
                 }
                 event.reply("You are ready!").setEphemeral(true).queue()
             }.await()
-
     }
 
     private fun startPhase() {
@@ -92,31 +98,28 @@ class WerewolfGame(
 
 
     suspend fun nightPhase() {
+        mutePlayers(true)
         for (p in players) {
-            p.member.guild.mute(p.member, true).queue()
             if (p.nightOrder != null)
                 wakeupQueue.add(p)
         }
 
         while (wakeupQueue.isNotEmpty()) {
             val player = wakeupQueue.remove()
+            println("Taking nightAction for $player ${player.role}")
             player.role.nightAction(this, player)
         }
     }
 
     private suspend fun dayPhase() {
-        for (p in players) {
-            p.member.guild.mute(p.member, false).queue()
-        }
+        mutePlayers(false)
         val voteTime = Instant.now().plus(6.minutes.toJavaDuration())
-        thread.sendMessage("@here Voting ends in ${TimeFormat.RELATIVE.format(voteTime)}").queue()
+        thread.sendMessage("@here Voting ends ${TimeFormat.RELATIVE.format(voteTime)}").queue()
         delay(6.minutes)
     }
 
     private suspend fun votePhase() {
-        for (p in players) {
-            p.member.guild.mute(p.member, true).queue()
-        }
+        mutePlayers(true)
         val message = thread.sendMessage(MessageCreate {
             content = "# Time to vote!"
             for (playerChunk in players.chunked(5)) {
@@ -157,7 +160,7 @@ class WerewolfGame(
         val maxVotes = voteCount.values.maxOrNull() ?: 0
         val winners = voteCount.filterValues { it == maxVotes }.keys.toMutableList()
         val hunter = winners.find { p -> p.role is Hunter }
-        if (hunter != null){
+        if (hunter != null) {
             //whoever hunter voted for dies
             winners.add(votes[hunter]!!)
         }
@@ -168,25 +171,21 @@ class WerewolfGame(
             for (player in players) {
                 append("$player : ${voteCount[player]}\n")
             }
-        })
+        }).queue()
 
-        thread.sendMessage(buildString{
-            if (winners.any { p -> p.team == Team.Tanner }){
+        thread.sendMessage(buildString {
+            if (winners.any { p -> p.team == Team.Tanner }) {
                 append("Tanners win")
-            }
-            else if (winners.any { p -> p.team == Team.Werewolf }) {
+            } else if (winners.any { p -> p.team == Team.Werewolf }) {
                 append("Villagers won!")
-            }
-            else if (winners.any { p -> p.team == Team.Villager }){
+            } else if (winners.any { p -> p.team == Team.Villager }) {
                 append("Werewolfs win")
             }
-        })
+        }).queue()
     }
 
     private fun endPhase() {
-        for (p in players) {
-            p.member.guild.mute(p.member, false).queue()
-        }
+        mutePlayers(false)
         thread.sendMessage(buildString {
             append("# Game History\n")
             append("## Start\n")
@@ -212,7 +211,6 @@ class WerewolfGame(
         thread.manager.setArchived(true).queue()
     }
 
-
     suspend fun targetCenter(
         source: MemberPlayer,
         prompt: String,
@@ -221,15 +219,16 @@ class WerewolfGame(
         source.hook.sendMessage(MessageCreate {
             content = prompt
             val buttons: MutableList<ItemComponent> = mutableListOf()
-            for (i in 0..<center.size) {
+            for (i in center.indices) {
                 buttons += button("$id-$interactionId-$i", "${i + 1}")
             }
             actionRow(buttons)
         }).setEphemeral(true).queue()
 
-        val (pressEvent, centerIdx) = AwooBot.awaitIndexedButton("$id-apprentice-seer-")
+        val (pressEvent, centerIdx) = AwooBot.awaitIndexedButton("$id-$interactionId-")
         return pressEvent to center[centerIdx]
     }
+
 
     suspend fun targetCenters(
         source: MemberPlayer,
@@ -316,7 +315,19 @@ class WerewolfGame(
         }
     }
 
+    private fun mutePlayers(mute: Boolean) {
+        for (p in players) {
+            p.member.guild.mute(p.member, mute).queue({}, { err ->
+                if (err is ErrorResponseException) {
+                    if (err.errorCode == 40032) {
+                        return@queue
+                    }
+                }
+                err.printStackTrace()
+            })
+        }
 
+    }
 }
 
 
