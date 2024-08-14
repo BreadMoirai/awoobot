@@ -5,10 +5,9 @@ import com.breadmoirai.awoobot.WerewolfGame
 
 class MysticWolf : Werewolf() {
     override val description: String = "Sees a another player's card"
-    override val nightOrder: Int = 24
+    override val altOrder: Int = 24
 
-    override suspend fun nightAction(game: WerewolfGame, player: MemberPlayer) {
-        super.nightAction(game, player)
+    override suspend fun altNightAction(game: WerewolfGame, player: MemberPlayer) {
         val (event, target) = game.targetPlayer(
             player,
             "Select a player to view their card",

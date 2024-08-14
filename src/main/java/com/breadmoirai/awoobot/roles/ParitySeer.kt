@@ -1,14 +1,9 @@
 package com.breadmoirai.awoobot.roles
 
-import com.breadmoirai.awoobot.AwooBot
 import com.breadmoirai.awoobot.MemberPlayer
 import com.breadmoirai.awoobot.Team
 import com.breadmoirai.awoobot.WerewolfGame
-import dev.minn.jda.ktx.coroutines.await
-import dev.minn.jda.ktx.interactions.components.button
-import dev.minn.jda.ktx.messages.MessageCreate
-import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
-import net.dv8tion.jda.api.interactions.components.buttons.Button
+import com.breadmoirai.awoobot.util.joinToOxford
 
 class ParitySeer() : Role() {
     override val description: String = "Sees if any 2 players are on the same team"
@@ -29,9 +24,14 @@ class ParitySeer() : Role() {
             targets += target
             if (targets.size == 1) {
                 event.reply("You have selected $target").setEphemeral(true).queue()
+            } else {
+                if (targets.map { it.team }.toSet().size == 1) {
+                    event.reply("${targets.joinToOxford()} are on the same team").setEphemeral(true).queue()
+                } else {
+                    event.reply("${targets.joinToOxford()} are NOT on the same team").setEphemeral(true).queue()
+                }
             }
         }
-
     }
 
 }
